@@ -11,9 +11,18 @@ kocur_dos-old.py
 *-old.py
 *.backup
 
-# Pliki aktualizacji - usuń tę linię!
-# updater.py  <-- USUŃ TĘ LINIĘ
+# Pliki aktualizacji
 cleanup.py
+
+# Pliki deweloperskie
+auto_deploy.py
+
+# Pliki konfiguracyjne z sekretami (WAŻNE!)
+.env
+.env.local
+.env.production
+*.env
+.github_token
 
 # Pliki Python
 __pycache__/
@@ -68,11 +77,6 @@ logs/
 *.temp
 temp/
 tmp/
-
-# Pliki konfiguracyjne lokalne
-.env
-.env.local
-config.local.json
 
 # Pliki testowe
 test_*.py
