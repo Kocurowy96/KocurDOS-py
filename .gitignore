@@ -14,8 +14,8 @@ kocur_dos-old.py
 # Pliki aktualizacji
 cleanup.py
 
-# Pliki deweloperskie
-auto_deploy.py
+# Pliki deweloperskie - USUŃ TĘ LINIĘ!
+# auto_deploy.py  <-- USUNIĘTE!
 
 # Pliki konfiguracyjne z sekretami (WAŻNE!)
 .env
