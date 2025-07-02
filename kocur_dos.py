@@ -330,15 +330,16 @@ Dostępne komendy:
         if not args:
             self.print_to_terminal("Użycie: python <plik.py>")
             return
-            
+        
         script_path = self.current_dir / args[0]
         if not script_path.exists():
             self.print_to_terminal(f"Plik nie istnieje: {args[0]}")
             return
-            
+        
         try:
-            result = subprocess.run([sys.executable, str(script_path)], 
-                                  capture_output=True, text=True, cwd=str(self.current_dir))
+            # Uruchom w katalogu gdzie jest plik
+            result = subprocess.run([sys.executable, script_path.name], 
+                                  capture_output=True, text=True, cwd=str(script_path.parent))
             if result.stdout:
                 self.print_to_terminal(result.stdout)
             if result.stderr:
