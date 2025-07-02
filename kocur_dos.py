@@ -15,6 +15,7 @@ import requests
 from pathlib import Path
 import shutil
 import time
+import signal
 
 class KocurDOS:
     VERSION = "1.0.0"
@@ -34,6 +35,9 @@ class KocurDOS:
         # Historia komend
         self.command_history = []
         self.history_index = -1
+        
+        # Aktualny proces Python
+        self.current_process = None
         
         self.setup_ui()
         self.check_for_updates()
@@ -86,9 +90,9 @@ class KocurDOS:
         input_frame.pack(fill=tk.X, padx=5, pady=5)
         
         # Prompt label
-        prompt_label = tk.Label(input_frame, text=f"C:\\{self.current_dir.name}>", 
+        self.prompt_label = tk.Label(input_frame, text=f"C:\\{self.current_dir.name}>", 
                                bg='black', fg='white', font=('Courier', 10))
-        prompt_label.pack(side=tk.LEFT)
+        self.prompt_label.pack(side=tk.LEFT)
         
         # Command entry
         self.command_entry = tk.Entry(input_frame, font=('Courier', 10))
@@ -96,11 +100,17 @@ class KocurDOS:
         self.command_entry.bind('<Return>', self.execute_command)
         self.command_entry.bind('<Up>', self.history_up)
         self.command_entry.bind('<Down>', self.history_down)
+        self.command_entry.bind('<Control-c>', self.interrupt_process)
         self.command_entry.focus()
+        
+        # Stop button
+        self.stop_button = ttk.Button(input_frame, text="STOP", command=self.interrupt_process)
+        self.stop_button.pack(side=tk.RIGHT, padx=(5, 0))
         
         # Powitanie
         self.print_to_terminal(f"KocurDOS v{self.VERSION}")
         self.print_to_terminal("Witaj w KocurDOS! Wpisz 'help' aby zobaczyć dostępne komendy.")
+        self.print_to_terminal("💡 Tip: Użyj Ctrl+C lub przycisku STOP aby przerwać działający program")
         self.print_to_terminal("")
         
     def show_editor(self):
@@ -171,6 +181,11 @@ class KocurDOS:
         self.terminal_output.config(state='disabled')
         self.terminal_output.see(tk.END)
         
+    def update_prompt(self):
+        """Aktualizuj prompt w terminalu"""
+        if hasattr(self, 'prompt_label'):
+            self.prompt_label.config(text=f"C:\\{self.current_dir.name}>")
+        
     def execute_command(self, event):
         command = self.command_entry.get().strip()
         if not command:
@@ -221,6 +236,8 @@ class KocurDOS:
             self.root.quit()
         elif cmd == 'ver':
             self.print_to_terminal(f"KocurDOS v{self.VERSION}")
+        elif cmd == 'stop':
+            self.interrupt_process()
         else:
             self.print_to_terminal(f"Nieznana komenda: {cmd}")
             
@@ -237,8 +254,13 @@ Dostępne komendy:
   echo <tekst>  - Wyświetl tekst
   cls, clear    - Wyczyść terminal
   python <plik> - Uruchom skrypt Python
+  stop          - Przerwij działający program
   ver           - Pokaż wersję
   exit          - Wyjście
+
+💡 Skróty klawiszowe:
+  Ctrl+C        - Przerwij program
+  ↑/↓           - Historia komend
         """
         self.print_to_terminal(help_text)
         
@@ -273,6 +295,9 @@ Dostępne komendy:
                 self.current_dir = new_path
             else:
                 self.print_to_terminal(f"Katalog nie istnieje: {target}")
+        
+        # Aktualizuj prompt
+        self.update_prompt()
                 
     def make_directory(self, args):
         if not args:
@@ -326,6 +351,23 @@ Dostępne komendy:
         self.terminal_output.delete(1.0, tk.END)
         self.terminal_output.config(state='disabled')
         
+    def interrupt_process(self, event=None):
+        """Przerwij działający proces Python"""
+        if self.current_process and self.current_process.poll() is None:
+            try:
+                self.current_process.terminate()
+                self.print_to_terminal("\n⚠️  Program przerwany przez użytkownika")
+                self.current_process = None
+            except:
+                try:
+                    self.current_process.kill()
+                    self.print_to_terminal("\n⚠️  Program wymuszenie zakończony")
+                    self.current_process = None
+                except:
+                    self.print_to_terminal("\n❌ Nie można przerwać programu")
+        else:
+            self.print_to_terminal("Brak działającego programu do przerwania")
+        
     def run_python_command(self, args):
         if not args:
             self.print_to_terminal("Użycie: python <plik.py>")
@@ -337,15 +379,48 @@ Dostępne komendy:
             return
         
         try:
-            # Uruchom w katalogu gdzie jest plik
-            result = subprocess.run([sys.executable, script_path.name], 
-                                  capture_output=True, text=True, cwd=str(script_path.parent))
-            if result.stdout:
-                self.print_to_terminal(result.stdout)
-            if result.stderr:
-                self.print_to_terminal(f"Błąd: {result.stderr}")
+            self.print_to_terminal(f"🐍 Uruchamiam {args[0]}... (Ctrl+C lub STOP aby przerwać)")
+            
+            # Uruchom proces w tle
+            self.current_process = subprocess.Popen(
+                [sys.executable, script_path.name], 
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                cwd=str(script_path.parent),
+                bufsize=1,
+                universal_newlines=True
+            )
+            
+            # Uruchom w osobnym wątku żeby nie blokować GUI
+            def run_process():
+                try:
+                    stdout, stderr = self.current_process.communicate(timeout=30)  # 30 sekund timeout
+                    
+                    if stdout:
+                        self.print_to_terminal(stdout)
+                    if stderr:
+                        self.print_to_terminal(f"Błąd: {stderr}")
+                    
+                    if self.current_process.returncode != 0:
+                        self.print_to_terminal(f"Program zakończony z kodem: {self.current_process.returncode}")
+                    else:
+                        self.print_to_terminal("✅ Program zakończony pomyślnie")
+                        
+                except subprocess.TimeoutExpired:
+                    self.current_process.kill()
+                    self.print_to_terminal("⏰ Program przerwany - przekroczono limit czasu (30s)")
+                except Exception as e:
+                    self.print_to_terminal(f"❌ Błąd wykonania: {e}")
+                finally:
+                    self.current_process = None
+            
+            # Uruchom w wątku
+            thread = threading.Thread(target=run_process, daemon=True)
+            thread.start()
+            
         except Exception as e:
-            self.print_to_terminal(f"Błąd wykonania: {e}")
+            self.print_to_terminal(f"Błąd uruchamiania: {e}")
             
     def history_up(self, event):
         if self.command_history and self.history_index > 0:
