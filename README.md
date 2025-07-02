@@ -105,7 +105,7 @@ Zgłaszaj błędy i sugestie przez GitHub Issues!
 **KocurDOS** - Twój własny system DOS w Pythonie! 🐱‍💻
 \`\`\`
 
-```python file="scripts/create_examples.py"
+\`\`\`python file="scripts/create_examples.py"
 #!/usr/bin/env python3
 """
 Skrypt tworzący przykładowe pliki dla KocurDOS
