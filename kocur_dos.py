@@ -511,11 +511,17 @@ Dostępne komendy:
                             self.download_update(latest_version)
                     else:
                         messagebox.showinfo("Aktualizacja", "Masz najnowszą wersję!")
+                elif response.status_code == 404:
+                    # Brak releases - nie pokazuj błędu
+                    print("ℹ️  Brak dostępnych releases na GitHub")
                 else:
                     messagebox.showwarning("Aktualizacja", "Nie można sprawdzić aktualizacji")
+            except requests.exceptions.RequestException:
+                # Błąd połączenia - nie pokazuj komunikatu
+                print("ℹ️  Nie można połączyć z GitHub")
             except Exception as e:
-                messagebox.showerror("Błąd", f"Błąd sprawdzania aktualizacji: {e}")
-                
+                print(f"ℹ️  Błąd sprawdzania aktualizacji: {e}")
+            
         threading.Thread(target=check_updates_thread, daemon=True).start()
         
     def download_update(self, version):
