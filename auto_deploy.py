@@ -261,8 +261,9 @@ def main():
     if run_command("git add .") is None:
         return 1
     
-    commit_msg = f"🔄 Release v{version}"
-    if run_command(f'git commit -m "{commit_msg}"') is None:
+    commit_msg = f"Release v{version}"
+    # Użyj listy zamiast stringa dla bezpieczeństwa
+    if run_command(['git', 'commit', '-m', commit_msg]) is None:
         print("ℹ️  Brak zmian do commitowania")
     
     if run_command("git push origin main") is None:
