@@ -11,8 +11,8 @@ kocur_dos-old.py
 *-old.py
 *.backup
 
-# Pliki aktualizacji
-updater.py
+# Pliki aktualizacji - usuń tę linię!
+# updater.py  <-- USUŃ TĘ LINIĘ
 cleanup.py
 
 # Pliki Python
